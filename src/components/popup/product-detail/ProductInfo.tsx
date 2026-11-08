@@ -12,7 +12,7 @@ function ProductInfo({ title, price, image }: ProductInfoProps) {
     <>
       <section className="flex items-center justify-center gap-2">
         <ProductImage src={image} alt={title} />
-        <div className="w-full h-[100px] flex flex-col justify-between items-start">
+        <div className="w-full h-[160px] flex flex-col justify-between items-start">
           <ProductTitle title={title} />
           <ProductPrice price={price} />
         </div>

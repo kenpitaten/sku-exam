@@ -1,7 +1,13 @@
 function ProductRemindMeButton() {
   return (
     <>
-      <button className="w-3/4 bg-amber-700 font-bold text-xl text-white cursor-pointer"> 貨到通知我</button>
+      <button
+        type="button"
+        onClick={() => {}}
+        className={`w-3/4 px-4 py-1.5 border rounded text-base font-bold transition-colors cursor-pointer border-red-500 bg-red-500 text-white`}
+      >
+        貨到通知我
+      </button>
     </>
   );
 }

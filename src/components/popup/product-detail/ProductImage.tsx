@@ -6,7 +6,7 @@ interface ProductImageProps {
 function ProductImage({ src, alt = "product" }: ProductImageProps) {
   return (
     <>
-      <img className="w-[100px] h-[100px] bg-amber-700" src={src} alt={alt} />
+      <img className="w-[160px] h-[160px] " src={src} alt={alt} />
     </>
   );
 }
