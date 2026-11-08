@@ -36,7 +36,7 @@ function ProductBuyCount({ count, maxStock, onChange }: ProductBuyCountProps) {
         −
       </button>
 
-      <span className="min-w-[2rem] text-center font-medium text-lg text-black">
+      <span className="min-w-8 text-center font-medium text-lg text-black">
         {count}
       </span>
 

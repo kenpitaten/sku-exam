@@ -17,7 +17,7 @@ function ProductInfo({
   return (
     <>
       <section className="flex items-center justify-center gap-3 relative">
-        <div className="relative w-[160px] h-[160px] shrink-0">
+        <div className="relative w-40 h-40 shrink-0">
           <ProductImage src={image} alt={title} />
           {isLoading && (
             <div className="absolute inset-0 bg-white/70 flex items-center justify-center text-xs font-semibold text-gray-600">
@@ -26,7 +26,7 @@ function ProductInfo({
           )}
         </div>
 
-        <div className="w-full h-[160px] flex flex-col justify-between items-start">
+        <div className="w-full h-40 flex flex-col justify-between items-start">
           <ProductTitle title={title} />
           <div
             className={`transition-opacity ${isLoading ? "opacity-40" : "opacity-100"}`}
