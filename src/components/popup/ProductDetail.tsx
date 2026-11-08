@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import PopupClose from "./PopupClose";
 import ProductInfo from "./product-detail/ProductInfo";
 import ProductSpecs from "./product-detail/ProductSpecs";
@@ -22,22 +22,22 @@ function ProductDetail({ productData }: ProductDetailProps) {
     selectedSpecs,
     availableOptions,
     currentSku,
+    displayPrice,
+    displayImage,
     isAllSelected,
     isSoldOut,
+    isLoading,
     handleOptionSelect,
   } = useSkuSelector(productData);
 
   // 包裝點擊規格事件：每當切換規格時，將購買數量重置回 1
-  const handleSelectWithResetCount = (specId: string, optionId: string) => {
-    handleOptionSelect(specId, optionId);
-    setCount(1);
-  };
-
-  // 若已選滿規格，顯示對應 SKU 的價格與圖片；否則顯示預設價格與第一張圖
-  const displayPrice = currentSku ? currentSku.price : productData.basePrice;
-  const displayImage = currentSku
-    ? currentSku.image
-    : productData.skuList[0]?.image || "";
+  const handleSelectWithResetCount = useCallback(
+    (specId: string, optionId: string) => {
+      handleOptionSelect(specId, optionId);
+      setCount(1);
+    },
+    [handleOptionSelect],
+  );
 
   return (
     <>
@@ -48,6 +48,7 @@ function ProductDetail({ productData }: ProductDetailProps) {
             title={productData.title}
             price={displayPrice}
             image={displayImage}
+            isLoading={isLoading}
           />
           <ProductSpecs
             specs={productData.specs}
@@ -57,7 +58,11 @@ function ProductDetail({ productData }: ProductDetailProps) {
           />
           {/* 只有當所有規格都選擇完畢 (isAllSelected) 時，才顯示下方區塊 */}
           {isAllSelected && (
-            <div className="mt-auto w-full flex items-center justify-between border-t border-gray-200 pt-4 gap-5">
+            <div
+              className={`mt-auto w-full flex items-center justify-between border-t border-gray-200 pt-4 gap-5 transition-opacity ${
+                isLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+              }`}
+            >
               {!isSoldOut ? (
                 <>
                   <ProductBuyCount

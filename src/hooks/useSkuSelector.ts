@@ -1,6 +1,6 @@
 // src/hooks/useSkuSelector.ts
-import { useState, useMemo, useCallback } from "react";
-import type { ProductData, Sku } from "../types/product";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import type { ProductData, Sku, SkuSelectorState } from "../types/product";
 
 // 輔助函式：將規格物件依 specs 順序轉為固定格式的字串 Key，例如 "color:c1|size:s1"
 function serializeSpecs(
@@ -13,12 +13,65 @@ function serializeSpecs(
     .join("|");
 }
 
+// 模擬後端 API 請求：延遲 800ms 後回傳對應的 SKU、顯示價格與圖片 (Story #3 AC1)
+function simulateFetchSkuApi(
+  product: ProductData,
+  specOrder: string[],
+  selectedSpecs: Record<string, string>,
+): Promise<{ matchedSku: Sku | null; price: number; image: string }> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const selectedKeys = specOrder.filter((key) =>
+        Boolean(selectedSpecs[key]),
+      );
+
+      // 若完全沒選任何規格，回傳預設價格與第一張圖
+      if (selectedKeys.length === 0) {
+        resolve({
+          matchedSku: null,
+          price: product.basePrice,
+          image: product.skuList[0]?.image || "",
+        });
+        return;
+      }
+
+      // 找出符合目前已選條件的第一筆 SKU（用於預覽圖片）
+      const previewSku =
+        product.skuList.find((sku) =>
+          selectedKeys.every((key) => sku.specs[key] === selectedSpecs[key]),
+        ) ?? null;
+
+      // 若已選滿所有層級，則 matchedSku 為最終確定的 SKU
+      const isAll = selectedKeys.length === specOrder.length;
+      const exactSku = isAll ? previewSku : null;
+
+      resolve({
+        matchedSku: exactSku,
+        price: exactSku ? exactSku.price : product.basePrice,
+        image: previewSku?.image || product.skuList[0]?.image || "",
+      });
+    }, 800);
+  });
+}
+
 export function useSkuSelector(product: ProductData) {
   // 1. 記錄使用者目前選中的規格，例如 { color: 'c1', size: 's1' }
   const [selectedSpecs, setSelectedSpecs] = useState<Record<string, string>>(
     {},
   );
   const [isLoading, setIsLoading] = useState(false);
+
+  // 由非同步 API 更新的狀態（確保快速連點時只顯示最後一次請求的結果）
+  const [currentSku, setCurrentSku] = useState<Sku | null>(null);
+  const [displayPrice, setDisplayPrice] = useState<number>(product.basePrice);
+  const [displayImage, setDisplayImage] = useState<string>(
+    product.skuList[0]?.image || "",
+  );
+
+  // 用於追蹤是否是第一次載入（初始載入不需轉圈圈，切換規格時才轉圈圈）
+  const isFirstRender = useRef(true);
+  // 用於記錄最新一次 API 請求的 ID，雙重防止 Race Condition
+  const latestRequestIdRef = useRef(0);
 
   // 取得規格層級的 ID 順序，例如 ['color', 'size', 'material']
   const specOrder = useMemo(
@@ -132,24 +185,54 @@ export function useSkuSelector(product: ProductData) {
     [specOrder, pathDictionary],
   );
 
+  // Story #3 AC1 & AC2: 監聽規格切換，觸發 800ms 非同步請求並處理 Race Condition
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    let isCancelled = false;
+    const currentRequestId = ++latestRequestIdRef.current;
+
+    setIsLoading(true);
+
+    simulateFetchSkuApi(product, specOrder, selectedSpecs).then((res) => {
+      // 若在 800ms 內使用者又點了其他選項，isCancelled 會變成 true，舊請求直接丟棄不更新 UI
+      if (isCancelled || currentRequestId !== latestRequestIdRef.current) {
+        return;
+      }
+
+      setCurrentSku(res.matchedSku);
+      setDisplayPrice(res.price);
+      setDisplayImage(res.image);
+      setIsLoading(false);
+    });
+
+    // Cleanup function：當 selectedSpecs 在 800ms 內再次改變時，立刻標記前一次請求作廢
+    return () => {
+      isCancelled = true;
+    };
+  }, [product, specOrder, selectedSpecs]);
+
   // 判斷是否所有層級的規格都已經選擇完畢
   const isAllSelected = useMemo(
     () => specOrder.every((specId) => Boolean(selectedSpecs[specId])),
-    [specOrder, selectedSpecs]
+    [specOrder, selectedSpecs],
   );
 
   // 5. 計算當前完整選中的 SKU（當所有規格都選齊時）
-  const currentSku: Sku | null = useMemo(() => {
-    if (!isAllSelected) return null;
+  // const currentSku: Sku | null = useMemo(() => {
+  //   if (!isAllSelected) return null;
 
-    return (
-      product.skuList.find((sku) =>
-        specOrder.every(
-          (specId) => sku.specs[specId] === selectedSpecs[specId],
-        ),
-      ) ?? null
-    );
-  }, [product.skuList, specOrder, selectedSpecs]);
+  //   return (
+  //     product.skuList.find((sku) =>
+  //       specOrder.every(
+  //         (specId) => sku.specs[specId] === selectedSpecs[specId],
+  //       ),
+  //     ) ?? null
+  //   );
+  // }, [product.skuList, specOrder, selectedSpecs]);
 
   // 判斷目前選擇的狀態是否為「已售完」
   const isSoldOut = useMemo(() => {
@@ -166,10 +249,11 @@ export function useSkuSelector(product: ProductData) {
     selectedSpecs,
     availableOptions,
     currentSku,
+    displayPrice,
+    displayImage,
     isAllSelected,
     isSoldOut,
     isLoading,
-    setIsLoading,
     handleOptionSelect,
   };
 }

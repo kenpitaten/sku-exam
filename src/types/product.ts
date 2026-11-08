@@ -32,5 +32,10 @@ export interface SkuSelectorState {
   selectedSpecs: Record<string, string>; // 目前選中的規格 { color: 'c1', size: 's2' }
   availableOptions: Record<string, string[]>; // 目前各層級可選的 Option ID 集合 (用於 Lookahead 判斷)
   currentSku: Sku | null; // 若全部選完且有對應 SKU，則回傳該 SKU
+  displayPrice: number;
+  displayImage: string;
+  isAllSelected: boolean;
+  isSoldOut: boolean;
   isLoading: boolean; // 模擬 API 的非同步狀態
+  handleOptionSelect: (specId: string, optionId: string) => void;
 }
